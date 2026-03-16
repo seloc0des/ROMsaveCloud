@@ -1,0 +1,2 @@
+# the client uses only Python stdlib - no dependencies needed
+# requires Python 3.9+

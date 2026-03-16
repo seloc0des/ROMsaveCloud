@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OSGSameCloudService</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #1a1a2e; color: #e0e0e0; min-height: 100vh;
+        }
+        .header {
+            background: #16213e; padding: 1rem 2rem; border-bottom: 2px solid #0f3460;
+            display: flex; justify-content: space-between; align-items: center;
+        }
+        .header h1 { font-size: 1.4rem; color: #e94560; }
+        .header .user-info { font-size: 0.9rem; color: #a0a0a0; }
+        .header button { background: #e94560; border: none; color: white; padding: 0.4rem 1rem;
+            border-radius: 4px; cursor: pointer; font-size: 0.85rem; }
+        .header button:hover { background: #c73e54; }
+
+        .container { max-width: 900px; margin: 2rem auto; padding: 0 1rem; }
+
+        /* auth forms */
+        .auth-container { max-width: 400px; margin: 4rem auto; padding: 0 1rem; }
+        .auth-card { background: #16213e; border-radius: 8px; padding: 2rem; }
+        .auth-card h2 { color: #e94560; margin-bottom: 1.5rem; text-align: center; }
+        .auth-card input { width: 100%; padding: 0.7rem; margin-bottom: 1rem; border: 1px solid #0f3460;
+            border-radius: 4px; background: #1a1a2e; color: #e0e0e0; font-size: 0.95rem; }
+        .auth-card input:focus { outline: none; border-color: #e94560; }
+        .auth-card .btn { width: 100%; padding: 0.7rem; background: #e94560; border: none;
+            color: white; border-radius: 4px; cursor: pointer; font-size: 1rem; margin-bottom: 0.5rem; }
+        .auth-card .btn:hover { background: #c73e54; }
+        .auth-card .btn-secondary { background: #0f3460; }
+        .auth-card .btn-secondary:hover { background: #1a4a8a; }
+        .auth-card .toggle { text-align: center; margin-top: 1rem; color: #a0a0a0; font-size: 0.85rem; }
+        .auth-card .toggle a { color: #e94560; cursor: pointer; text-decoration: none; }
+        .error { color: #ff6b6b; font-size: 0.85rem; margin-bottom: 0.5rem; }
+
+        /* saves view */
+        .filters { display: flex; gap: 1rem; margin-bottom: 1.5rem; flex-wrap: wrap; }
+        .filters select, .filters input {
+            padding: 0.5rem; background: #16213e; border: 1px solid #0f3460;
+            color: #e0e0e0; border-radius: 4px; font-size: 0.9rem;
+        }
+        .save-card {
+            background: #16213e; border-radius: 6px; padding: 1rem 1.2rem;
+            margin-bottom: 0.75rem; display: flex; justify-content: space-between;
+            align-items: center; border-left: 3px solid #0f3460;
+        }
+        .save-card:hover { border-left-color: #e94560; }
+        .save-info h3 { font-size: 1rem; color: #e0e0e0; margin-bottom: 0.3rem; }
+        .save-info .meta { font-size: 0.8rem; color: #a0a0a0; }
+        .save-info .system-badge {
+            display: inline-block; background: #0f3460; padding: 0.15rem 0.5rem;
+            border-radius: 3px; font-size: 0.75rem; color: #e94560; margin-right: 0.5rem;
+        }
+        .save-actions button {
+            background: #0f3460; border: none; color: #e0e0e0; padding: 0.4rem 0.8rem;
+            border-radius: 4px; cursor: pointer; font-size: 0.8rem; margin-left: 0.5rem;
+        }
+        .save-actions button:hover { background: #1a4a8a; }
+        .save-actions .delete-btn:hover { background: #c73e54; }
+        .empty { text-align: center; color: #a0a0a0; padding: 3rem; }
+
+        /* upload area */
+        .upload-area {
+            border: 2px dashed #0f3460; border-radius: 8px; padding: 2rem;
+            text-align: center; margin-bottom: 1.5rem; cursor: pointer;
+            transition: border-color 0.2s;
+        }
+        .upload-area:hover, .upload-area.dragover { border-color: #e94560; }
+        .upload-area input[type="file"] { display: none; }
+        .upload-form { display: flex; gap: 0.5rem; margin-top: 1rem; flex-wrap: wrap; justify-content: center; }
+        .upload-form input, .upload-form select {
+            padding: 0.5rem; background: #1a1a2e; border: 1px solid #0f3460;
+            color: #e0e0e0; border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+    <!-- Auth Screen -->
+    <div id="auth-screen" class="auth-container">
+        <div class="auth-card">
+            <h2 id="auth-title">Login</h2>
+            <div id="auth-error" class="error" style="display:none"></div>
+            <input type="text" id="auth-username" placeholder="Username" autocomplete="username">
+            <input type="password" id="auth-password" placeholder="Password" autocomplete="current-password">
+            <button class="btn" id="auth-submit">Login</button>
+            <div class="toggle">
+                <span id="auth-toggle-text">Don't have an account? </span>
+                <a id="auth-toggle">Register</a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Screen -->
+    <div id="main-screen" style="display:none">
+        <div class="header">
+            <h1>OSGSameCloudService</h1>
+            <div style="display:flex;align-items:center;gap:1rem;">
+                <span class="user-info" id="username-display"></span>
+                <button id="logout-btn">Logout</button>
+            </div>
+        </div>
+        <div class="container">
+            <!-- Upload -->
+            <div class="upload-area" id="upload-area">
+                <p>Drop save files here or click to upload</p>
+                <input type="file" id="file-input" multiple>
+                <div class="upload-form">
+                    <input type="text" id="upload-system" placeholder="System (e.g. snes)">
+                    <input type="text" id="upload-game" placeholder="Game name">
+                </div>
+            </div>
+
+            <!-- Filters -->
+            <div class="filters">
+                <select id="filter-system"><option value="">All Systems</option></select>
+                <input type="text" id="filter-search" placeholder="Search games...">
+            </div>
+
+            <!-- Save list -->
+            <div id="saves-list"></div>
+        </div>
+    </div>
+
+    <script>
+        const API = window.location.origin + '/api';
+        let username = null;
+        let isRegister = false;
+
+        // --- Auth ---
+        function showAuth() {
+            document.getElementById('auth-screen').style.display = '';
+            document.getElementById('main-screen').style.display = 'none';
+        }
+        function showMain() {
+            document.getElementById('auth-screen').style.display = 'none';
+            document.getElementById('main-screen').style.display = '';
+            document.getElementById('username-display').textContent = username;
+            loadSystems();
+            loadSaves();
+        }
+
+        document.getElementById('auth-toggle').onclick = () => {
+            isRegister = !isRegister;
+            document.getElementById('auth-title').textContent = isRegister ? 'Register' : 'Login';
+            document.getElementById('auth-submit').textContent = isRegister ? 'Register' : 'Login';
+            document.getElementById('auth-toggle-text').textContent = isRegister
+                ? 'Already have an account? ' : "Don't have an account? ";
+            document.getElementById('auth-toggle').textContent = isRegister ? 'Login' : 'Register';
+        };
+
+        document.getElementById('auth-submit').onclick = async () => {
+            const u = document.getElementById('auth-username').value.trim();
+            const p = document.getElementById('auth-password').value;
+            const errEl = document.getElementById('auth-error');
+            if (!u || !p) { errEl.textContent = 'Fill in both fields'; errEl.style.display = ''; return; }
+            try {
+                const endpoint = isRegister ? '/auth/register' : '/auth/login';
+                const resp = await fetch(API + endpoint, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    credentials: 'same-origin',
+                    body: JSON.stringify({username: u, password: p}),
+                });
+                if (!resp.ok) {
+                    const err = await resp.json();
+                    throw new Error(err.detail || 'Request failed');
+                }
+                await resp.json();
+                username = u;
+                errEl.style.display = 'none';
+                showMain();
+            } catch (e) {
+                errEl.textContent = e.message; errEl.style.display = '';
+            }
+        };
+
+        // enter key submits auth
+        ['auth-username', 'auth-password'].forEach(id => {
+            document.getElementById(id).addEventListener('keydown', e => {
+                if (e.key === 'Enter') document.getElementById('auth-submit').click();
+            });
+        });
+
+        document.getElementById('logout-btn').onclick = async () => {
+            await fetch(API + '/auth/logout', {method: 'POST', credentials: 'same-origin'});
+            username = null;
+            showAuth();
+        };
+
+        // --- Saves ---
+        async function apiFetch(endpoint, opts = {}) {
+            const resp = await fetch(API + endpoint, {
+                ...opts,
+                credentials: 'same-origin',
+                headers: { ...(opts.headers || {}) },
+            });
+            if (resp.status === 401) { showAuth(); throw new Error('Session expired'); }
+            if (!resp.ok) {
+                let msg = 'Request failed (' + resp.status + ')';
+                try { const err = await resp.json(); msg = err.detail || msg; } catch {}
+                throw new Error(msg);
+            }
+            return resp;
+        }
+
+        async function loadSystems() {
+            const resp = await apiFetch('/saves/systems');
+            const data = await resp.json();
+            const sel = document.getElementById('filter-system');
+            sel.innerHTML = '<option value="">All Systems</option>';
+            data.systems.forEach(s => {
+                const opt = document.createElement('option');
+                opt.value = s; opt.textContent = s;
+                sel.appendChild(opt);
+            });
+        }
+
+        let _cachedSaves = [];
+
+        async function loadSaves() {
+            const system = document.getElementById('filter-system').value;
+            let url = '/saves/list';
+            const params = new URLSearchParams();
+            if (system) params.set('system_name', system);
+            if (params.toString()) url += '?' + params;
+
+            const resp = await apiFetch(url);
+            const data = await resp.json();
+            _cachedSaves = data.saves;
+            renderSaves(_cachedSaves);
+        }
+
+        function filterSaves() {
+            renderSaves(_cachedSaves);
+        }
+
+        function renderSaves(saves) {
+            const search = document.getElementById('filter-search').value.toLowerCase();
+            const filtered = saves.filter(s =>
+                s.game_name.toLowerCase().includes(search) ||
+                s.file_name.toLowerCase().includes(search)
+            );
+
+            const container = document.getElementById('saves-list');
+            container.innerHTML = '';
+
+            if (!filtered.length) {
+                container.innerHTML = '<div class="empty">No saves found. Upload some!</div>';
+                return;
+            }
+
+            filtered.forEach(s => {
+                const card = document.createElement('div');
+                card.className = 'save-card';
+
+                const info = document.createElement('div');
+                info.className = 'save-info';
+
+                const h3 = document.createElement('h3');
+                const badge = document.createElement('span');
+                badge.className = 'system-badge';
+                badge.textContent = s.system_name;
+                h3.appendChild(badge);
+                h3.appendChild(document.createTextNode(s.game_name));
+                info.appendChild(h3);
+
+                const meta = document.createElement('div');
+                meta.className = 'meta';
+                meta.textContent = s.file_name + ' \u00B7 v' + s.version + ' \u00B7 ' +
+                    (s.file_size / 1024).toFixed(1) + 'KB \u00B7 ' + s.uploaded_at;
+                info.appendChild(meta);
+
+                const actions = document.createElement('div');
+                actions.className = 'save-actions';
+
+                const dlBtn = document.createElement('button');
+                dlBtn.textContent = 'Download';
+                dlBtn.addEventListener('click', () => downloadSave(s.system_name, s.game_name, s.file_name));
+                actions.appendChild(dlBtn);
+
+                const delBtn = document.createElement('button');
+                delBtn.className = 'delete-btn';
+                delBtn.textContent = 'Delete';
+                delBtn.addEventListener('click', () => deleteSave(s.system_name, s.game_name, s.file_name));
+                actions.appendChild(delBtn);
+
+                card.appendChild(info);
+                card.appendChild(actions);
+                container.appendChild(card);
+            });
+        }
+
+        async function downloadSave(system, game, file) {
+            try {
+                const params = new URLSearchParams({system_name: system, game_name: game, file_name: file});
+                const resp = await apiFetch('/saves/download?' + params);
+                const blob = await resp.blob();
+                const a = document.createElement('a');
+                a.href = URL.createObjectURL(blob);
+                a.download = file;
+                a.click();
+                URL.revokeObjectURL(a.href);
+            } catch (e) {
+                alert('Download failed: ' + e.message);
+            }
+        }
+
+        async function deleteSave(system, game, file) {
+            if (!confirm(`Delete all versions of ${game}/${file}?`)) return;
+            try {
+                const params = new URLSearchParams({system_name: system, game_name: game, file_name: file});
+                await apiFetch('/saves/delete?' + params, {method: 'DELETE'});
+                loadSaves();
+                loadSystems();
+            } catch (e) {
+                alert('Delete failed: ' + e.message);
+            }
+        }
+
+        // --- Upload ---
+        const uploadArea = document.getElementById('upload-area');
+        const fileInput = document.getElementById('file-input');
+
+        uploadArea.onclick = () => fileInput.click();
+        uploadArea.ondragover = e => { e.preventDefault(); uploadArea.classList.add('dragover'); };
+        uploadArea.ondragleave = () => uploadArea.classList.remove('dragover');
+        uploadArea.ondrop = e => {
+            e.preventDefault(); uploadArea.classList.remove('dragover');
+            handleFiles(e.dataTransfer.files);
+        };
+        fileInput.onchange = () => handleFiles(fileInput.files);
+
+        async function handleFiles(files) {
+            const system = document.getElementById('upload-system').value.trim() || 'unknown';
+            const game = document.getElementById('upload-game').value.trim();
+            let errors = [];
+
+            for (const file of files) {
+                const gameName = game || file.name.replace(/\.[^.]+$/, '');
+                const form = new FormData();
+                form.append('file', file);
+                const params = new URLSearchParams({system_name: system, game_name: gameName});
+                try {
+                    await apiFetch('/saves/upload?' + params, {method: 'POST', body: form});
+                } catch (e) {
+                    errors.push(file.name + ': ' + e.message);
+                }
+            }
+            if (errors.length) alert('Upload errors:\n' + errors.join('\n'));
+            loadSaves();
+            loadSystems();
+        }
+
+        // filters
+        document.getElementById('filter-system').onchange = loadSaves;
+        document.getElementById('filter-search').oninput = filterSaves;
+
+        // init — check if we have a valid cookie session
+        async function checkSession() {
+            try {
+                const resp = await fetch(API + '/auth/me', {credentials: 'same-origin'});
+                if (resp.ok) {
+                    const data = await resp.json();
+                    username = data.username;
+                    showMain();
+                } else { showAuth(); }
+            } catch { showAuth(); }
+        }
+        checkSession();
+    </script>
+</body>
+</html>

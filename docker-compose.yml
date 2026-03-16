@@ -1,0 +1,22 @@
+services:
+  osgsc:
+    build: .
+    container_name: osgsc-server
+    ports:
+      - "${OSGSC_PORT:-4444}:4444"
+    volumes:
+      - osgsc-data:/data
+    environment:
+      - OSGSC_SECRET_KEY=${OSGSC_SECRET_KEY}
+      - OSGSC_MAX_SAVE_SIZE_MB=${OSGSC_MAX_SAVE_SIZE_MB:-50}
+      - OSGSC_MAX_VERSIONS=${OSGSC_MAX_VERSIONS:-5}
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:4444/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 5s
+    restart: unless-stopped
+
+volumes:
+  osgsc-data:
